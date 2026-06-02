@@ -41,7 +41,17 @@ export default function SignatureCanvas({ value, onChange }: Props) {
     };
     resize();
     window.addEventListener('resize', resize);
-    return () => window.removeEventListener('resize', resize);
+
+    // iOS Safari ignores preventDefault from React's passive pointer/touch
+    // handlers, so attach a non-passive touchmove listener to stop the page
+    // from scrolling/zooming while the customer is signing.
+    const blockScroll = (e: TouchEvent) => e.preventDefault();
+    canvas.addEventListener('touchmove', blockScroll, { passive: false });
+
+    return () => {
+      window.removeEventListener('resize', resize);
+      canvas.removeEventListener('touchmove', blockScroll);
+    };
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
