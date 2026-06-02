@@ -1,6 +1,8 @@
-import { jsPDF } from 'jspdf';
-import html2canvas from 'html2canvas';
 import type { DamagePhase, Inspection } from '../types/inspection';
+
+// jsPDF + html2canvas are heavy (~500 kB). They are imported dynamically inside
+// the functions below so the bundler splits them into a separate chunk that is
+// only fetched when the user actually reaches the PDF step.
 
 export interface MapImages {
   Ankunft: string | null;
@@ -9,6 +11,7 @@ export interface MapImages {
 
 /** Render a DOM node (the damage map) to a PNG data URL. */
 export async function captureNode(node: HTMLElement): Promise<string> {
+  const { default: html2canvas } = await import('html2canvas');
   const canvas = await html2canvas(node, {
     backgroundColor: '#ffffff',
     scale: 2,
@@ -28,7 +31,11 @@ function fuelLabel(level: number): string {
 const MARGIN = 12;
 
 /** Build the one-page WerkCheck report and return it as a PDF Blob. */
-export function generatePdf(inspection: Inspection, maps: MapImages): Blob {
+export async function generatePdf(
+  inspection: Inspection,
+  maps: MapImages
+): Promise<Blob> {
+  const { jsPDF } = await import('jspdf');
   const doc = new jsPDF({ unit: 'mm', format: 'a4' });
   const pageW = doc.internal.pageSize.getWidth();
   let y = MARGIN;

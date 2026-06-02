@@ -16,7 +16,8 @@ const PHASES: DamagePhase[] = ['Ankunft', 'Abfahrt'];
 export default function ReviewScreen({ inspection, onReset }: Props) {
   const ankunftRef = useRef<HTMLDivElement>(null);
   const abfahrtRef = useRef<HTMLDivElement>(null);
-  const [busy, setBusy] = useState(false);
+  // null = idle; otherwise the label shown on the (disabled) export button
+  const [status, setStatus] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
 
   const totalDamages = PHASES.reduce(
@@ -25,14 +26,17 @@ export default function ReviewScreen({ inspection, onReset }: Props) {
   );
 
   const handleExport = async () => {
-    setBusy(true);
+    // the PDF libraries (jsPDF + html2canvas) live in a lazy chunk that is
+    // fetched on first use — surface that wait to the user
+    setStatus('PDF wird vorbereitet…');
     setError(null);
     try {
       const maps: MapImages = {
         Ankunft: ankunftRef.current ? await captureNode(ankunftRef.current) : null,
         Abfahrt: abfahrtRef.current ? await captureNode(abfahrtRef.current) : null,
       };
-      const blob = generatePdf(inspection, maps);
+      setStatus('Erstelle PDF…');
+      const blob = await generatePdf(inspection, maps);
       const plate = (inspection.licensePlate || 'fahrzeug').replace(/\s+/g, '_');
       await sharePdf(blob, `WerkCheck_${plate}.pdf`);
     } catch (e) {
@@ -40,7 +44,7 @@ export default function ReviewScreen({ inspection, onReset }: Props) {
       // eslint-disable-next-line no-console
       console.error(e);
     } finally {
-      setBusy(false);
+      setStatus(null);
     }
   };
 
@@ -130,10 +134,10 @@ export default function ReviewScreen({ inspection, onReset }: Props) {
       <button
         type="button"
         onClick={handleExport}
-        disabled={busy}
+        disabled={!!status}
         className="btn-primary w-full"
       >
-        {busy ? 'Erstelle PDF…' : 'PDF Erstellen & Teilen'}
+        {status ?? 'PDF Erstellen & Teilen'}
       </button>
 
       <button type="button" onClick={onReset} className="btn-ghost w-full">
