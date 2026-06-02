@@ -25,7 +25,14 @@ export default function ReviewScreen({ inspection, onReset }: Props) {
     0
   );
 
+  // required before a report may be generated
+  const missing: string[] = [];
+  if (!inspection.licensePlate.trim()) missing.push('Kennzeichen');
+  if (!inspection.customerName.trim()) missing.push('Kundenname');
+  if (!inspection.signature) missing.push('Unterschrift');
+
   const handleExport = async () => {
+    if (missing.length) return;
     // the PDF libraries (jsPDF + html2canvas) live in a lazy chunk that is
     // fetched on first use — surface that wait to the user
     setStatus('PDF wird vorbereitet…');
@@ -125,6 +132,17 @@ export default function ReviewScreen({ inspection, onReset }: Props) {
         </div>
       )}
 
+      {missing.length > 0 && (
+        <div className="rounded-2xl bg-amber-100 px-4 py-3 text-sm text-amber-800 dark:bg-amber-900/40 dark:text-amber-200">
+          <p className="font-semibold">Vor dem Erstellen bitte ergänzen:</p>
+          <ul className="mt-1 list-inside list-disc">
+            {missing.map((m) => (
+              <li key={m}>{m} fehlt</li>
+            ))}
+          </ul>
+        </div>
+      )}
+
       {error && (
         <div className="rounded-2xl bg-red-100 px-4 py-3 text-sm text-red-700 dark:bg-red-900/40 dark:text-red-200">
           {error}
@@ -134,7 +152,7 @@ export default function ReviewScreen({ inspection, onReset }: Props) {
       <button
         type="button"
         onClick={handleExport}
-        disabled={!!status}
+        disabled={!!status || missing.length > 0}
         className="btn-primary w-full"
       >
         {status ?? 'PDF Erstellen & Teilen'}

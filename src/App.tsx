@@ -21,6 +21,18 @@ function loadInspection(): Inspection {
   return createEmptyInspection();
 }
 
+/** Has the user entered anything worth warning about losing? */
+function isDirty(i: Inspection): boolean {
+  return (
+    i.licensePlate.trim() !== '' ||
+    i.customerName.trim() !== '' ||
+    i.mileage.trim() !== '' ||
+    i.signature !== null ||
+    i.damages.Ankunft.length > 0 ||
+    i.damages.Abfahrt.length > 0
+  );
+}
+
 export default function App() {
   const [step, setStep] = useState(0);
   const [inspection, setInspection] = useState<Inspection>(loadInspection);
@@ -34,13 +46,23 @@ export default function App() {
     }
   }, [inspection]);
 
+  // warn before a reload/close would discard an in-progress inspection
+  useEffect(() => {
+    const handler = (e: BeforeUnloadEvent) => {
+      if (!isDirty(inspection)) return;
+      e.preventDefault();
+      e.returnValue = '';
+    };
+    window.addEventListener('beforeunload', handler);
+    return () => window.removeEventListener('beforeunload', handler);
+  }, [inspection]);
+
   const update = (patch: Partial<Inspection>) =>
     setInspection((prev) => ({ ...prev, ...patch }));
 
   const reset = () => {
-    if (!confirm('Aktuelle Inspektion verwerfen und neu starten?')) return;
-    const fresh = createEmptyInspection();
-    setInspection(fresh);
+    if (isDirty(inspection) && !confirm('Aktuelle Prüfung verwerfen?')) return;
+    setInspection(createEmptyInspection());
     setStep(0);
   };
 
@@ -52,7 +74,7 @@ export default function App() {
 
   return (
     <div className="flex min-h-full flex-col bg-slate-50 text-slate-900 dark:bg-slate-900 dark:text-slate-100">
-      <StepWizard steps={STEPS} current={step} onStep={setStep} />
+      <StepWizard steps={STEPS} current={step} onStep={setStep} onReset={reset} />
 
       <main className="mx-auto w-full max-w-md flex-1 pb-28">
         {step === 0 && <NewInspectionScreen inspection={inspection} update={update} />}

@@ -2,10 +2,11 @@ interface Props {
   steps: string[];
   current: number; // 0-based
   onStep?: (index: number) => void;
+  onReset?: () => void;
 }
 
 /** Top progress bar + step labels for the 5-step wizard. */
-export default function StepWizard({ steps, current, onStep }: Props) {
+export default function StepWizard({ steps, current, onStep, onReset }: Props) {
   const pct = ((current + 1) / steps.length) * 100;
 
   return (
@@ -20,6 +21,15 @@ export default function StepWizard({ steps, current, onStep }: Props) {
         <div className="ml-auto text-sm font-medium text-slate-500 dark:text-slate-400">
           Schritt {current + 1}/{steps.length}
         </div>
+        {onReset && (
+          <button
+            type="button"
+            onClick={onReset}
+            className="tap rounded-xl border border-slate-300 px-2.5 py-1 text-xs font-semibold text-slate-600 dark:border-slate-600 dark:text-slate-300"
+          >
+            Neue Prüfung
+          </button>
+        )}
       </div>
 
       {/* progress track */}
