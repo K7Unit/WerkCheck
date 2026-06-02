@@ -107,7 +107,15 @@ export async function generatePdf(
     doc.setTextColor(15, 23, 42);
     doc.text(phase, x, y);
     const img = maps[phase];
-    if (img) {
+    if (inspection.damages[phase].length === 0) {
+      // no markers — a bare outline image is noise, show a label instead
+      doc.setFont('helvetica', 'italic');
+      doc.setFontSize(8.5);
+      doc.setTextColor(148, 163, 184);
+      doc.text('Keine Schäden dokumentiert', x + mapW / 2, y + 2 + mapH / 2, {
+        align: 'center',
+      });
+    } else if (img) {
       // keep aspect ratio (outline is 300x640 ≈ 0.469)
       const drawW = Math.min(mapW, mapH * 0.469);
       doc.addImage(img, 'PNG', x + (mapW - drawW) / 2, y + 2, drawW, mapH);
