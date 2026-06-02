@@ -66,6 +66,19 @@ export function createEmptyInspection(): Inspection {
   };
 }
 
+/**
+ * Workshop branding. Persisted under its own localStorage key so it survives
+ * "Neue Prüfung" (which only resets the current inspection).
+ */
+export interface Workshop {
+  name: string;
+  logo: string | null; // data URL
+}
+
+export function createEmptyWorkshop(): Workshop {
+  return { name: '', logo: null };
+}
+
 export const SEVERITY_COLORS: Record<Severity, string> = {
   leicht: '#fbbf24',
   mittel: '#fb923c',

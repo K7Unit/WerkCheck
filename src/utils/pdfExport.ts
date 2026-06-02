@@ -1,4 +1,4 @@
-import type { DamagePhase, Inspection } from '../types/inspection';
+import type { DamagePhase, Inspection, Workshop } from '../types/inspection';
 
 // jsPDF + html2canvas are heavy (~500 kB). They are imported dynamically inside
 // the functions below so the bundler splits them into a separate chunk that is
@@ -33,7 +33,8 @@ const MARGIN = 12;
 /** Build the one-page WerkCheck report and return it as a PDF Blob. */
 export async function generatePdf(
   inspection: Inspection,
-  maps: MapImages
+  maps: MapImages,
+  workshop?: Workshop
 ): Promise<Blob> {
   const { jsPDF } = await import('jspdf');
   const doc = new jsPDF({ unit: 'mm', format: 'a4' });
@@ -41,16 +42,25 @@ export async function generatePdf(
   let y = MARGIN;
 
   // ---- Workshop header ----
-  doc.setFillColor(225, 29, 72);
-  doc.rect(MARGIN, y, 14, 14, 'F');
-  doc.setTextColor(255, 255, 255);
-  doc.setFont('helvetica', 'bold');
-  doc.setFontSize(13);
-  doc.text('W', MARGIN + 7, y + 9.5, { align: 'center' });
+  if (workshop?.logo) {
+    try {
+      doc.addImage(workshop.logo, 'PNG', MARGIN, y, 14, 14);
+    } catch {
+      /* unsupported logo image — fall through to the placeholder */
+    }
+  } else {
+    doc.setFillColor(225, 29, 72);
+    doc.rect(MARGIN, y, 14, 14, 'F');
+    doc.setTextColor(255, 255, 255);
+    doc.setFont('helvetica', 'bold');
+    doc.setFontSize(13);
+    doc.text('W', MARGIN + 7, y + 9.5, { align: 'center' });
+  }
 
   doc.setTextColor(15, 23, 42);
+  doc.setFont('helvetica', 'bold');
   doc.setFontSize(18);
-  doc.text('WerkCheck', MARGIN + 18, y + 7);
+  doc.text(workshop?.name?.trim() || 'WerkCheck', MARGIN + 18, y + 7);
   doc.setFont('helvetica', 'normal');
   doc.setFontSize(9);
   doc.setTextColor(100, 116, 139);
@@ -221,8 +231,10 @@ export async function generatePdf(
   return doc.output('blob');
 }
 
+export type ShareResult = 'shared' | 'downloaded' | 'cancelled';
+
 /** Share the PDF via the iOS share sheet, falling back to a download. */
-export async function sharePdf(blob: Blob, fileName: string): Promise<void> {
+export async function sharePdf(blob: Blob, fileName: string): Promise<ShareResult> {
   const file = new File([blob], fileName, { type: 'application/pdf' });
   const nav = navigator as Navigator & {
     canShare?: (data: ShareData) => boolean;
@@ -235,10 +247,10 @@ export async function sharePdf(blob: Blob, fileName: string): Promise<void> {
         title: 'WerkCheck Protokoll',
         text: 'Fahrzeug-Übergabeprotokoll',
       });
-      return;
+      return 'shared';
     } catch (err) {
       // user cancelled the share sheet — do not fall back to download
-      if ((err as Error).name === 'AbortError') return;
+      if ((err as Error).name === 'AbortError') return 'cancelled';
     }
   }
 
@@ -251,4 +263,5 @@ export async function sharePdf(blob: Blob, fileName: string): Promise<void> {
   a.click();
   a.remove();
   setTimeout(() => URL.revokeObjectURL(url), 1000);
+  return 'downloaded';
 }

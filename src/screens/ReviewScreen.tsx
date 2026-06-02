@@ -1,5 +1,5 @@
-import { useRef, useState } from 'react';
-import type { DamagePhase, Inspection } from '../types/inspection';
+import { useEffect, useRef, useState } from 'react';
+import type { DamagePhase, Inspection, Workshop } from '../types/inspection';
 import { SEVERITY_COLORS } from '../types/inspection';
 import VehicleOutline from '../components/VehicleOutline';
 import DamageMarker from '../components/DamageMarker';
@@ -8,17 +8,26 @@ import type { MapImages } from '../utils/pdfExport';
 
 interface Props {
   inspection: Inspection;
+  workshop: Workshop;
   onReset: () => void;
 }
 
 const PHASES: DamagePhase[] = ['Ankunft', 'Abfahrt'];
 
-export default function ReviewScreen({ inspection, onReset }: Props) {
+export default function ReviewScreen({ inspection, workshop, onReset }: Props) {
   const ankunftRef = useRef<HTMLDivElement>(null);
   const abfahrtRef = useRef<HTMLDivElement>(null);
   // null = idle; otherwise the label shown on the (disabled) export button
   const [status, setStatus] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
+  const [toast, setToast] = useState<string | null>(null);
+
+  // auto-dismiss the success toast
+  useEffect(() => {
+    if (!toast) return;
+    const t = setTimeout(() => setToast(null), 3000);
+    return () => clearTimeout(t);
+  }, [toast]);
 
   const totalDamages = PHASES.reduce(
     (n, p) => n + inspection.damages[p].length,
@@ -43,9 +52,10 @@ export default function ReviewScreen({ inspection, onReset }: Props) {
         Abfahrt: abfahrtRef.current ? await captureNode(abfahrtRef.current) : null,
       };
       setStatus('Erstelle PDF…');
-      const blob = await generatePdf(inspection, maps);
+      const blob = await generatePdf(inspection, maps, workshop);
       const plate = (inspection.licensePlate || 'fahrzeug').replace(/\s+/g, '_');
-      await sharePdf(blob, `WerkCheck_${plate}.pdf`);
+      const result = await sharePdf(blob, `WerkCheck_${plate}.pdf`);
+      if (result !== 'cancelled') setToast('Bericht erstellt');
     } catch (e) {
       setError('PDF konnte nicht erstellt werden. Bitte erneut versuchen.');
       // eslint-disable-next-line no-console
@@ -161,6 +171,15 @@ export default function ReviewScreen({ inspection, onReset }: Props) {
       <button type="button" onClick={onReset} className="btn-ghost w-full">
         Neue Inspektion starten
       </button>
+
+      {toast && (
+        <div className="safe-bottom pointer-events-none fixed inset-x-0 bottom-4 z-50 flex justify-center px-4">
+          <div className="flex items-center gap-2 rounded-2xl bg-slate-900 px-5 py-3 text-sm font-semibold text-white shadow-xl dark:bg-white dark:text-slate-900">
+            <span>✓</span>
+            {toast}
+          </div>
+        </div>
+      )}
     </div>
   );
 }

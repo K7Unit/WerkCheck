@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react';
-import type { Inspection } from './types/inspection';
-import { createEmptyInspection } from './types/inspection';
+import type { Inspection, Workshop } from './types/inspection';
+import { createEmptyInspection, createEmptyWorkshop } from './types/inspection';
 import StepWizard from './components/StepWizard';
 import NewInspectionScreen from './screens/NewInspectionScreen';
 import DamageMarkingScreen from './screens/DamageMarkingScreen';
@@ -10,6 +10,7 @@ import ReviewScreen from './screens/ReviewScreen';
 
 const STEPS = ['Fahrzeug', 'Schäden', 'Fotos', 'Unterschrift', 'PDF'];
 const STORAGE_KEY = 'werkcheck.inspection.v1';
+const WORKSHOP_KEY = 'werkcheck.workshop.v1';
 
 function loadInspection(): Inspection {
   try {
@@ -19,6 +20,16 @@ function loadInspection(): Inspection {
     /* ignore corrupt storage */
   }
   return createEmptyInspection();
+}
+
+function loadWorkshop(): Workshop {
+  try {
+    const raw = localStorage.getItem(WORKSHOP_KEY);
+    if (raw) return { ...createEmptyWorkshop(), ...JSON.parse(raw) };
+  } catch {
+    /* ignore corrupt storage */
+  }
+  return createEmptyWorkshop();
 }
 
 /** Has the user entered anything worth warning about losing? */
@@ -36,6 +47,7 @@ function isDirty(i: Inspection): boolean {
 export default function App() {
   const [step, setStep] = useState(0);
   const [inspection, setInspection] = useState<Inspection>(loadInspection);
+  const [workshop, setWorkshop] = useState<Workshop>(loadWorkshop);
 
   // persist to localStorage so an interrupted handover survives a refresh
   useEffect(() => {
@@ -45,6 +57,18 @@ export default function App() {
       /* storage full / unavailable — keep working in-memory */
     }
   }, [inspection]);
+
+  // workshop branding persists under its own key (survives "Neue Prüfung")
+  useEffect(() => {
+    try {
+      localStorage.setItem(WORKSHOP_KEY, JSON.stringify(workshop));
+    } catch {
+      /* ignore */
+    }
+  }, [workshop]);
+
+  const updateWorkshop = (patch: Partial<Workshop>) =>
+    setWorkshop((prev) => ({ ...prev, ...patch }));
 
   // warn before a reload/close would discard an in-progress inspection
   useEffect(() => {
@@ -77,11 +101,20 @@ export default function App() {
       <StepWizard steps={STEPS} current={step} onStep={setStep} onReset={reset} />
 
       <main className="mx-auto w-full max-w-md flex-1 pb-28">
-        {step === 0 && <NewInspectionScreen inspection={inspection} update={update} />}
+        {step === 0 && (
+          <NewInspectionScreen
+            inspection={inspection}
+            update={update}
+            workshop={workshop}
+            updateWorkshop={updateWorkshop}
+          />
+        )}
         {step === 1 && <DamageMarkingScreen inspection={inspection} update={update} />}
         {step === 2 && <PhotoScreen inspection={inspection} update={update} />}
         {step === 3 && <SignatureScreen inspection={inspection} update={update} />}
-        {step === 4 && <ReviewScreen inspection={inspection} onReset={reset} />}
+        {step === 4 && (
+          <ReviewScreen inspection={inspection} workshop={workshop} onReset={reset} />
+        )}
       </main>
 
       {/* sticky bottom navigation */}

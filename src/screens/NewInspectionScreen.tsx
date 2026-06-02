@@ -1,10 +1,39 @@
-import type { Inspection, VehicleType } from '../types/inspection';
+import { useRef } from 'react';
+import type { Inspection, VehicleType, Workshop } from '../types/inspection';
 import { VEHICLE_TYPES } from '../types/inspection';
 import VehicleOutline from '../components/VehicleOutline';
 
 interface Props {
   inspection: Inspection;
   update: (patch: Partial<Inspection>) => void;
+  workshop: Workshop;
+  updateWorkshop: (patch: Partial<Workshop>) => void;
+}
+
+/** Downscale a logo to a small square data URL. */
+function readLogo(file: File): Promise<string> {
+  return new Promise((resolve, reject) => {
+    const reader = new FileReader();
+    reader.onload = () => {
+      const img = new Image();
+      img.onload = () => {
+        const size = Math.min(256, Math.max(img.width, img.height));
+        const canvas = document.createElement('canvas');
+        canvas.width = size;
+        canvas.height = size;
+        const ctx = canvas.getContext('2d')!;
+        const scale = size / Math.max(img.width, img.height);
+        const w = img.width * scale;
+        const h = img.height * scale;
+        ctx.drawImage(img, (size - w) / 2, (size - h) / 2, w, h);
+        resolve(canvas.toDataURL('image/png'));
+      };
+      img.onerror = reject;
+      img.src = reader.result as string;
+    };
+    reader.onerror = reject;
+    reader.readAsDataURL(file);
+  });
 }
 
 function fuelLabel(level: number): string {
@@ -13,7 +42,14 @@ function fuelLabel(level: number): string {
   return `${Math.round(level / 12.5)}/8`;
 }
 
-export default function NewInspectionScreen({ inspection, update }: Props) {
+export default function NewInspectionScreen({
+  inspection,
+  update,
+  workshop,
+  updateWorkshop,
+}: Props) {
+  const logoInput = useRef<HTMLInputElement>(null);
+
   // value for <input type="datetime-local"> (strip seconds + timezone)
   const dtLocal = (() => {
     const d = new Date(inspection.dateTime);
@@ -24,6 +60,51 @@ export default function NewInspectionScreen({ inspection, update }: Props) {
   return (
     <div className="space-y-4 p-4">
       <h1 className="text-xl font-bold text-slate-900 dark:text-white">Neue Inspektion</h1>
+
+      {/* Workshop branding — persisted separately, reused across inspections */}
+      <div className="card space-y-3">
+        <label className="label">Werkstatt</label>
+        <div className="flex items-center gap-3">
+          <button
+            type="button"
+            onClick={() => logoInput.current?.click()}
+            className="tap flex h-14 w-14 shrink-0 items-center justify-center overflow-hidden rounded-2xl border border-slate-300 bg-slate-50 text-slate-400 dark:border-slate-600 dark:bg-slate-700"
+            aria-label="Logo hochladen"
+          >
+            {workshop.logo ? (
+              <img src={workshop.logo} alt="Logo" className="h-full w-full object-contain" />
+            ) : (
+              <span className="text-xs">Logo</span>
+            )}
+          </button>
+          <input
+            className="field flex-1"
+            placeholder="Werkstattname"
+            value={workshop.name}
+            onChange={(e) => updateWorkshop({ name: e.target.value })}
+          />
+          {workshop.logo && (
+            <button
+              type="button"
+              onClick={() => updateWorkshop({ logo: null })}
+              className="tap text-xs text-slate-400 underline"
+            >
+              entfernen
+            </button>
+          )}
+        </div>
+        <input
+          ref={logoInput}
+          type="file"
+          accept="image/*"
+          className="hidden"
+          onChange={async (e) => {
+            const file = e.target.files?.[0];
+            if (file) updateWorkshop({ logo: await readLogo(file) });
+            e.target.value = '';
+          }}
+        />
+      </div>
 
       <div className="card space-y-4">
         <div>
