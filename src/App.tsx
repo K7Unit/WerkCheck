@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react';
 import type { Inspection, Workshop } from './types/inspection';
 import { createEmptyInspection, createEmptyWorkshop } from './types/inspection';
 import StepWizard from './components/StepWizard';
+import PwaPrompt from './components/PwaPrompt';
 import NewInspectionScreen from './screens/NewInspectionScreen';
 import DamageMarkingScreen from './screens/DamageMarkingScreen';
 import PhotoScreen from './screens/PhotoScreen';
@@ -142,6 +143,8 @@ export default function App() {
           </div>
         </nav>
       )}
+
+      <PwaPrompt />
     </div>
   );
 }
