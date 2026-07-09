@@ -91,3 +91,16 @@ it installable to the iOS home screen ("Zum Home-Bildschirm").
 App icons live in `public/` and are committed static assets. To regenerate
 them from the source mark, see `scripts/generate-icons.mjs` (needs `sharp`
 installed ad-hoc — it is intentionally not a project dependency).
+
+## Deployment (GitHub Pages)
+
+`.github/workflows/deploy.yml` builds the app on every pull request and
+deploys it to GitHub Pages on pushes to `main`. Because Vite is configured
+with a relative `base: './'`, the build works unchanged at the project-pages
+subpath `https://<owner>.github.io/WerkCheck/`.
+
+One-time setup: in the repository **Settings → Pages**, set **Source** to
+**GitHub Actions**. After that, every merge to `main` publishes automatically,
+giving the HTTPS origin required to test PWA install, offline launch, and the
+Web Share sheet on a real iPhone.
+
