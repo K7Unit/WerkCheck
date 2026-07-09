@@ -14,6 +14,8 @@ interrupted handover survives a page refresh. Designed for Safari on iOS 16+.
 - **Tailwind CSS** — mobile-first, touch-optimized, dark-mode via
   `prefers-color-scheme`
 - **html2canvas + jsPDF** — client-side PDF generation
+- **vite-plugin-pwa (Workbox)** — installable PWA, service-worker precaching
+  for true offline launch
 - **Web Share API** — shares the PDF through the native iOS share sheet
 
 ## Features
@@ -71,3 +73,34 @@ npm run preview  # preview the production build
 Open the dev URL on an iPhone (same network) or in Safari's responsive design
 mode. The Web Share API requires HTTPS (or `localhost`) and a real device for
 the native share sheet; elsewhere the PDF falls back to a download.
+
+## PWA / offline
+
+A Workbox service worker (via `vite-plugin-pwa`) precaches the full app shell —
+including the lazily-loaded jsPDF/html2canvas chunks — so the app launches and
+generates PDFs with no network after the first visit. A web app manifest makes
+it installable to the iOS home screen ("Zum Home-Bildschirm").
+
+- The service worker only runs in a production build over HTTPS (or
+  `localhost`). Use `npm run build && npm run preview` to test it — it is not
+  active under `npm run dev`.
+- Updates use a prompt strategy: a German "Neue Version verfügbar" toast lets
+  the user choose when to reload, so a new version never interrupts an
+  in-progress inspection.
+
+App icons live in `public/` and are committed static assets. To regenerate
+them from the source mark, see `scripts/generate-icons.mjs` (needs `sharp`
+installed ad-hoc — it is intentionally not a project dependency).
+
+## Deployment (GitHub Pages)
+
+`.github/workflows/deploy.yml` builds the app on every pull request and
+deploys it to GitHub Pages on pushes to `main`. Because Vite is configured
+with a relative `base: './'`, the build works unchanged at the project-pages
+subpath `https://<owner>.github.io/WerkCheck/`.
+
+One-time setup: in the repository **Settings → Pages**, set **Source** to
+**GitHub Actions**. After that, every merge to `main` publishes automatically,
+giving the HTTPS origin required to test PWA install, offline launch, and the
+Web Share sheet on a real iPhone.
+
